@@ -12,11 +12,6 @@ Parameters:
       - t2.micro
       - t3.micro
 
-  LatestAmiId:
-    Description: Fetch the latest Amazon Linux 2 AMI automatically from Parameter Store
-    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
-    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
-
 Resources:
   # -------------------------------------------------------------------------
   # Network Infrastructure (VPC, Subnet, IGW)
@@ -48,25 +43,6 @@ Resources:
       MapPublicIpOnLaunch: true
       AvailabilityZone: !Select [0, !GetAZs '']
 
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref LabVPC
-
-  PublicRoute:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  SubnetRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet
-      RouteTableId: !Ref PublicRouteTable
-
   # -------------------------------------------------------------------------
   # Security (Security Group, IAM, GuardDuty)
   # -------------------------------------------------------------------------
@@ -85,8 +61,6 @@ Resources:
           CidrIp: 0.0.0.0/0
 
   # The Vulnerable IAM Role
-  # This role allows the EC2 instance to access S3. 
-  # This is the credential set we steal in the attack!
   VulnerableRole:
     Type: AWS::IAM::Role
     Properties:
@@ -97,7 +71,6 @@ Resources:
             Principal:
               Service: ec2.amazonaws.com
             Action: sts:AssumeRole
-      Path: /
       Policies:
         - PolicyName: S3AccessPolicy
           PolicyDocument:
@@ -107,7 +80,6 @@ Resources:
                 Action:
                   - s3:ListBucket
                   - s3:GetObject
-                  - s3:PutObject
                 Resource:
                   - !Sub "arn:aws:s3:::${SecureDataBucket}"
                   - !Sub "arn:aws:s3:::${SecureDataBucket}/*"
@@ -115,18 +87,34 @@ Resources:
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      Path: /
       Roles:
         - !Ref VulnerableRole
 
-  # Enable GuardDuty Detector (Security Monitoring)
-  GuardDutyDetector:
-    Type: AWS::GuardDuty::Detector
+  # -------------------------------------------------------------------------
+  # Compute (The Vulnerable Web App)
+  # -------------------------------------------------------------------------
+  JuiceShopInstance:
+    Type: AWS::EC2::Instance
     Properties:
-      Enable: true
+      InstanceType: !Ref InstanceType
+      ImageId: ami-0c02fb55956c7d316 # Amazon Linux 2 (example)
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds:
+        - !Ref WebSecurityGroup
+      IamInstanceProfile: !Ref InstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          amazon-linux-extras install docker -y
+          service docker start
+          usermod -a -G docker ec2-user
+          docker run -d -p 80:3000 --restart always bkimminich/juice-shop
+          echo "Dang it - if you can see this text, you're accessing our private information!" > secret-information.txt
+          aws s3 cp secret-information.txt s3://${SecureDataBucket}/
 
   # -------------------------------------------------------------------------
-  # Storage (The Target Data)
+  # Storage
   # -------------------------------------------------------------------------
   SecureDataBucket:
     Type: AWS::S3::Bucket
@@ -137,37 +125,6 @@ Resources:
         IgnorePublicAcls: true
         BlockPublicPolicy: true
         RestrictPublicBuckets: true
-
-  # -------------------------------------------------------------------------
-  # Compute (The Vulnerable Web App)
-  # -------------------------------------------------------------------------
-  JuiceShopInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      InstanceType: !Ref InstanceType
-      ImageId: !Ref LatestAmiId
-      SubnetId: !Ref PublicSubnet
-      SecurityGroupIds:
-        - !Ref WebSecurityGroup
-      IamInstanceProfile: !Ref InstanceProfile
-      Tags:
-        - Key: Name
-          Value: OWASP-Juice-Shop-Server
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          # 1. Update and Install Docker
-          yum update -y
-          amazon-linux-extras install docker -y
-          service docker start
-          usermod -a -G docker ec2-user
-
-          # 2. Deploy OWASP Juice Shop on Port 80
-          docker run -d -p 80:3000 --restart always bkimminich/juice-shop
-
-          # 3. Create the "Secret" file in the S3 Bucket (Setup for the lab)
-          echo "Dang it - if you can see this text, you're accessing our private information!" > secret-information.txt
-          aws s3 cp secret-information.txt s3://${SecureDataBucket}/
 
 Outputs:
   JuiceShopURL:

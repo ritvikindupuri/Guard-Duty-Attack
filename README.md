@@ -1,4 +1,4 @@
-# AWS Threat Detection & Vulnerability Analysis: GuardDuty vs. OWASP Juice Shop
+## AWS Threat Detection & Vulnerability Analysis: GuardDuty vs. OWASP Juice Shop
 
 ## Project Overview
 This project simulates a full-cycle security event—acting as both the Red Team (Attacker) and Blue Team (Defender). I deployed a deliberately vulnerable web application (OWASP Juice Shop) on AWS and executed a multi-stage attack to compromise the server, exfiltrate temporary IAM credentials via the EC2 Instance Metadata Service (IMDS), and access sensitive S3 data.
@@ -79,7 +79,7 @@ Using **AWS CloudShell** to simulate an external attacker environment, I configu
 Upon completion of the attack, AWS GuardDuty successfully generated high-severity findings:
 
 1.  **Finding:** `UnauthorizedAccess:IAMUser/InstanceCredentialExfiltration.InsideAWS`
-    * **Analysis:** GuardDuty detected that credentials created exclusively for the EC2 instance were used from a different IP address (the CloudShell session) to perform API calls. This confirmed the credential theft.
+    * **Detailed Analysis:** This finding was triggered because temporary IAM credentials (ASIA...) associated with an EC2 Instance Profile were used to make API calls from an IP address belonging to AWS CloudShell, rather than the EC2 instance itself. GuardDuty's behavioral analytics engine identified this anomaly because EC2 Role credentials should technically only be used by the instance they are assigned to. The "InsideAWS" suffix indicates the traffic originated from within the AWS network (CloudShell) but outside the authorized resource, a high-fidelity indicator of lateral movement.
 
 <p align="center">
   <img src=".assets/Instance Credential Exfiltration Alert.png" alt="Credential Exfiltration Alert" width="800"/>
@@ -90,7 +90,7 @@ Upon completion of the attack, AWS GuardDuty successfully generated high-severit
 </p>
 
 2.  **Finding:** `Object:S3/MaliciousFile`
-    * **Analysis:** After enabling Malware Protection for S3, I uploaded an EICAR test file. GuardDuty automatically scanned the object and flagged it as malware.
+    * **Detailed Analysis:** This finding validates the effectiveness of the recently enabled **GuardDuty Malware Protection for S3**. Unlike the behavioral detection above, this is a signature-based detection. When the `EICAR TEST.pdf` file was uploaded, GuardDuty automatically initiated a scan, identified the known EICAR virus signature string inside the file object, and flagged it as "Malicious." In a real-world scenario, this capability prevents S3 buckets from becoming distribution points for ransomware or trojans.
 
 <p align="center">
   <img src=".assets/S3 Eicar test File Upload.png" alt="EICAR Upload" width="800"/>

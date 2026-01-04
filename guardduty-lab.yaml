@@ -1,5 +1,7 @@
 #I have reconstructed this based on the architecture requirements: it sets up the VPC, the vulnerable EC2 instance running OWASP Juice Shop, the private S3 bucket, and the necessary IAM roles that allow the specific "IMDS Credential Theft" attack path to work.
 
+#I have reconstructed this based on the architecture requirements: it sets up the VPC, the vulnerable EC2 instance running OWASP Juice Shop, the private S3 bucket, and the necessary IAM roles that allow the specific "IMDS Credential Theft" attack path to work.
+
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'AWS Threat Detection Lab: Deploys OWASP Juice Shop on EC2 with a private S3 bucket and GuardDuty enabled.'
 

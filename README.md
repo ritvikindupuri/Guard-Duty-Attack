@@ -16,6 +16,8 @@ Finally, I utilized **Amazon GuardDuty** to detect the intrusion, analyze the fi
   <img src=".assets/Architecture Diagram.png" alt="Architecture Diagram" width="800"/>
   <br>
   <b>Figure 1: Project Architecture & Attack Path</b>
+  <br><br>
+  The complete attack lifecycle visualized. The path moves from external web exploitation (SQLi/RCE) to internal cloud lateral movement (IMDS abuse), culminating in data exfiltration and GuardDuty detection.
 </p>
 
 The infrastructure was deployed securely using AWS CloudFormation to ensure a consistent and isolated lab environment.
@@ -24,6 +26,8 @@ The infrastructure was deployed securely using AWS CloudFormation to ensure a co
   <img src=".assets/Infrastructure Deployment.png" alt="Infrastructure Deployment" width="800"/>
   <br>
   <b>Figure 2: CloudFormation Stack Deployment</b>
+  <br><br>
+  The CloudFormation stack status showing "CREATE_COMPLETE". This automated the deployment of the VPC, the vulnerable EC2 instance, and the target private S3 bucket.
 </p>
 
 ## The Attack Lifecycle (Red Team)
@@ -38,6 +42,8 @@ Bypassed the administrative login portal by exploiting an unsanitized email inpu
   <img src=".assets/SQL Injection.png" alt="SQL Injection" width="600"/>
   <br>
   <b>Figure 3: Exploiting SQL Injection to Bypass Authentication</b>
+  <br><br>
+  The login page of the OWASP Juice Shop. The payload injected into the email field forces the backend database query to evaluate as true, logging the attacker in as the first user (Admin).
 </p>
 
 ### 2. Privilege Escalation: Command Injection & IMDS Abuse
@@ -50,6 +56,8 @@ Exploited a Remote Code Execution (RCE) vulnerability in the User Profile "Usern
   <img src=".assets/Command Injection.png" alt="Command Injection" width="600"/>
   <br>
   <b>Figure 4: RCE Payload Retrieving IAM Credentials</b>
+  <br><br>
+  The "User Profile" page where the Username field was exploited. The payload visible in the field executes a curl command to the local metadata service (169.254.169.254) and outputs the IAM keys to a public file.
 </p>
 
 ### 3. Data Exfiltration
@@ -61,6 +69,8 @@ Using **AWS CloudShell** to simulate an external attacker environment, I configu
   <img src=".assets/Cloudshell S3 Data Exfiltration.png" alt="Data Exfiltration" width="800"/>
   <br>
   <b>Figure 5: Exfiltrating S3 Data via CloudShell</b>
+  <br><br>
+  The attacker's terminal (CloudShell). The screenshot shows the AWS CLI configured with the stolen "stolen" profile being used to successfully copy the `secret-information.txt` file from the private bucket.
 </p>
 
 ## Defense & Analysis (Blue Team)
@@ -75,6 +85,8 @@ Upon completion of the attack, AWS GuardDuty successfully generated high-severit
   <img src=".assets/Instance Credential Exfiltration Alert.png" alt="Credential Exfiltration Alert" width="800"/>
   <br>
   <b>Figure 6: GuardDuty Detection of Credential Misuse</b>
+  <br><br>
+  The detailed GuardDuty finding. It highlights the severity (High) and correctly attributes the unauthorized access to the `InstanceCredentialExfiltration` finding type, identifying the compromised role and the external IP address.
 </p>
 
 2.  **Finding:** `Object:S3/MaliciousFile`
@@ -84,12 +96,16 @@ Upon completion of the attack, AWS GuardDuty successfully generated high-severit
   <img src=".assets/S3 Eicar test File Upload.png" alt="EICAR Upload" width="800"/>
   <br>
   <b>Figure 7: Uploading Malicious Test File</b>
+  <br><br>
+  Validating the Malware Protection feature by manually uploading a standard EICAR test file to the secured S3 bucket.
 </p>
 
 <p align="center">
   <img src=".assets/S3 Malware Scan Alert.png" alt="Malware Scan Alert" width="800"/>
   <br>
   <b>Figure 8: GuardDuty S3 Malware Finding</b>
+  <br><br>
+  The resulting GuardDuty alert. The finding `Object:S3/MaliciousFile` confirms that the automated scanning engine successfully detected and flagged the uploaded test file as a security risk.
 </p>
 
 ## Key Learnings

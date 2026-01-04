@@ -16,13 +16,13 @@ The primary objective was to validate GuardDuty's ability to detect high-fidelit
   <img src=".assets/Architecture Diagram.png" alt="Architecture Diagram" width="800"/>
   <br>
   <b>Figure 1: Attack Path & Detection Architecture</b>
-  <br><br>
-  <b>1. Initial Access:</b> External attacker exploits public web vulnerabilities (SQLi, RCE).<br>
-  <b>2. Credential Access:</b> Attacker forces the EC2 instance to query the IMDS (169.254.169.254) for temporary IAM role credentials.<br>
-  <b>3. Lateral Movement:</b> Attacker pivots to an external environment (simulated via CloudShell), authenticating as the compromised role.<br>
-  <b>4. Exfiltration:</b> Attacker accesses private S3 resources.<br>
-  <b>5. Detection:</b> GuardDuty ingests CloudTrail logs, identifying the anomaly of EC2 credentials being used from a non-EC2 IP address.
 </p>
+
+**1. Initial Access:** External attacker exploits public web vulnerabilities (SQLi, RCE).
+**2. Credential Access:** Attacker forces the EC2 instance to query the IMDS (169.254.169.254) for temporary IAM role credentials.
+**3. Lateral Movement:** Attacker pivots to an external environment (simulated via CloudShell), authenticating as the compromised role.
+**4. Exfiltration:** Attacker accesses private S3 resources.
+**5. Detection:** GuardDuty ingests CloudTrail logs, identifying the anomaly of EC2 credentials being used from a non-EC2 IP address.
 
 ## MITRE ATT&CK Mapping
 | Tactic | ID | Technique | Project Implementation |
@@ -39,9 +39,9 @@ The lab environment was provisioned using a custom CloudFormation template to en
   <img src=".assets/Infrastructure Deployment.png" alt="Infrastructure Deployment" width="800"/>
   <br>
   <b>Figure 2: Automated Deployment</b>
-  <br><br>
-  The CloudFormation stack `GuardDuty-Lab` provisioning the VPC, Security Groups, EC2 Instance, and S3 Bucket.
 </p>
+
+The CloudFormation stack `GuardDuty-Lab` provisioning the VPC, Security Groups, EC2 Instance, and S3 Bucket.
 
 ## The Attack Lifecycle (Red Team)
 
@@ -53,9 +53,9 @@ I exploited an unsanitized email input field to bypass authentication constraint
   <img src=".assets/SQL Injection.png" alt="SQL Injection" width="600"/>
   <br>
   <b>Figure 3: SQL Injection Execution</b>
-  <br><br>
-  Injecting the SQL payload into the login portal to gain Administrative access.
 </p>
+
+Injecting the SQL payload into the login portal to gain Administrative access.
 
 ### Phase 2: Credential Theft (IMDS Abuse)
 Using a Command Injection vulnerability in the User Profile, I forced the server to query the AWS internal metadata service.
@@ -65,9 +65,9 @@ Using a Command Injection vulnerability in the User Profile, I forced the server
   <img src=".assets/Command Injection.png" alt="Command Injection" width="600"/>
   <br>
   <b>Figure 4: RCE Payload Retrieving IAM Credentials</b>
-  <br><br>
-  The `curl` command executed via the application layer, targeting `http://169.254.169.254/latest/meta-data/iam/security-credentials/`.
 </p>
+
+The `curl` command executed via the application layer, targeting `http://169.254.169.254/latest/meta-data/iam/security-credentials/`.
 
 ### Phase 3: Cross-Account Data Exfiltration
 I moved to **AWS CloudShell** to simulate an external attacker. By configuring the AWS CLI with the stolen session token, I successfully accessed the private S3 bucket.
@@ -76,9 +76,9 @@ I moved to **AWS CloudShell** to simulate an external attacker. By configuring t
   <img src=".assets/Cloudshell S3 Data Exfiltration.png" alt="Data Exfiltration" width="800"/>
   <br>
   <b>Figure 5: Exfiltration via CloudShell</b>
-  <br><br>
-  Using the compromised IAM role from an external context to download `secret-information.txt`.
 </p>
+
+Using the compromised IAM role from an external context to download `secret-information.txt`.
 
 ## Defense & Detection (Blue Team)
 
